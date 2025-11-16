@@ -1,7 +1,7 @@
 GNU-EFI=./gnu-efi
 CC=gcc
 CFLAGS=-fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args
-INCLUDES=-I$(GNU-EFI)/inc/ -I$(GNU-EFI)/inc/efi -I$(GNU-EFI)/inc/efi/x86_64 -I$(GNU-EFI)/inc/efi/protocol
+INCLUDES=-I$(GNU-EFI)/inc/ -I$(GNU-EFI)/inc/efi -I$(GNU-EFI)/inc/efi/x86_64 -I$(GNU-EFI)/inc/efi/protocol -I./includes/
 QEMU=qemu-system-x86_64
 
 .PHONY: clean clean-all
