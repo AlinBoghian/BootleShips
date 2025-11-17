@@ -6,6 +6,9 @@ QEMU=qemu-system-x86_64
 
 .PHONY: clean clean-all
 
+debug:
+	${QEMU} -drive file=./ovmf.fd,format=raw,if=pflash -cdrom boot.img -s -S -serial mon:stdio
+
 run: boot.img
 	${QEMU} -drive file=./ovmf.fd,format=raw,if=pflash -cdrom boot.img
 
@@ -20,6 +23,7 @@ boot.img: main.efi
 
 main.efi: main.so
 	objcopy -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym  -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc --target efi-app-x86_64 --subsystem=10 main.so main.efi
+	objcopy --only-keep-debug main.so main.efi.debug
 
 main.so: main.o
 	ld -shared -Bsymbolic -L$(GNU-EFI)/x86_64/lib -L$(GNU-EFI)/x86_64/gnuefi -T$(GNU-EFI)/gnuefi/elf_x86_64_efi.lds $(GNU-EFI)/x86_64/gnuefi/crt0-efi-x86_64.o main.o -o main.so -lgnuefi -lefi
