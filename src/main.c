@@ -3,9 +3,10 @@
 #include <stdio.h>
 #include <utils.h>
 #include <efiprot.h>
+#include "./game.c"
 #define MAT_SIZE 10
 
-void init_gop()
+EFI_GRAPHICS_OUTPUT_PROTOCOL *init_gop(struct graphics_context *context)
 {
     EFI_GUID gopGuid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
     EFI_GRAPHICS_OUTPUT_PROTOCOL *gop;
@@ -43,14 +44,10 @@ void init_gop()
         info->PixelFormat,
         i == nativeMode ? L"(current)" : L""
         );
+        context->height = info->VerticalResolution;
+        context->width = info->HorizontalResolution;
     }
-    EFI_GRAPHICS_OUTPUT_BLT_PIXEL pixel;
-    pixel.Blue = 0;
-    pixel.Green = 0;
-    pixel.Red = 100;
-
-    
-    uefi_call_wrapper(gop->Blt, 10, gop, &pixel, EfiBltVideoFill, 0 ,0, 0, 0, 50, 50, 0);
+    return gop;    
 }
 
 EFI_STATUS debug_preamble(EFI_HANDLE ImageHandle) {
@@ -84,25 +81,21 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
     debug_preamble(ImageHandle);
     EFI_STATUS Status;
-    EFI_INPUT_KEY Key;
 
     /* Store the system table for future use in other functions */
     ST = SystemTable;
     /* Say hi */
     Print(L"Hello World\r\n");
-    if (EFI_ERROR(Status))
-        return Status;
 
-    init_gop();
+    struct graphics_context context;
+    EFI_GRAPHICS_OUTPUT_PROTOCOL *gop = init_gop(&context);
 
-    Status = ST->ConIn->Reset(ST->ConIn, FALSE);
-    if (EFI_ERROR(Status))
-        return Status;
+
+    start_game(context, gop);
 
     /* Now wait until a key becomes available.  This is a simple
        polling implementation.  You could try and use the WaitForKey
        event instead if you like */
-    while ((Status = ST->ConIn->ReadKeyStroke(ST->ConIn, &Key)) == EFI_NOT_READY) ;
 
 
     return Status;
