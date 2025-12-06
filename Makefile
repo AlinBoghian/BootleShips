@@ -1,12 +1,12 @@
 GNU-EFI=./gnu-efi
 CC=gcc
-CFLAGS=-fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args
+CFLAGS=-fpic -ffreestanding -fno-stack-protector -fno-stack-check -fshort-wchar -mno-red-zone -maccumulate-outgoing-args -O0 -ggdb
 INCLUDES=-I$(GNU-EFI)/inc/ -I$(GNU-EFI)/inc/efi -I$(GNU-EFI)/inc/efi/x86_64 -I$(GNU-EFI)/inc/efi/protocol -I./includes/
 QEMU=qemu-system-x86_64
 
 .PHONY: clean clean-all
 
-debug:
+debug: boot.img main.efi.debug
 	${QEMU} -drive file=./ovmf.fd,format=raw,if=pflash -cdrom boot.img -s -S -serial mon:stdio
 
 run: boot.img
@@ -21,7 +21,7 @@ boot.img: main.efi
 	sudo umount /mnt/
 	mv boot_aux.img boot.img
 
-main.efi: main.so
+main.efi: main.so main.efi.debug
 	objcopy -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym  -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc --target efi-app-x86_64 --subsystem=10 main.so main.efi
 	objcopy --only-keep-debug main.so main.efi.debug
 
