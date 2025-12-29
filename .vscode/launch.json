@@ -5,30 +5,28 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Uefi App",
+            "name": "Launch efi",
             "type": "cppdbg",
             "request": "launch",
+            "program": "${workspaceFolder}/main.efi.debug",
+            "cwd": "${workspaceFolder}",
+            "miDebuggerPath": "gdb",
             "MIMode": "gdb",
-            "program": "${workspaceRoot}/main.efi",
-            "cwd": "${workspaceRoot}",
             "miDebuggerServerAddress": "localhost:1234",
-            "postRemoteConnectCommands": [
+            "preLaunchTask": "Run QEMU",
+            "stopAtEntry": true,
+            "setupCommands": [
                 {
-                    "description": "Load setup for debugging uefi APP",
-                    "text": "source ${workspaceRoot}/.gdbinit",
-                    "ignoreFailures": false
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
                 },
-            ],
-
-            "customLaunchSetupCommands": [
                 {
-                    "description": "Load setup for debugging uefi APP",
-                    "text": "target remote localhost:1234",
-                    "ignoreFailures": false
-                },
-            ],
-            "setupCommands": []
-        }
-
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
     ]
 }

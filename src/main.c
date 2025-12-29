@@ -3,19 +3,29 @@
 #include <stdio.h>
 #include <utils.h>
 #include <efiprot.h>
-#include "./game.c"
-#define MAT_SIZE 10
+
+#include "game.h"
+#include "graphics.h"
+
+EFI_GRAPHICS_OUTPUT_PROTOCOL *gop;
+void drawBlock(int width, int height, int leftX, int upperY, color color) {
+    EFI_GRAPHICS_OUTPUT_BLT_PIXEL pixelColor = (EFI_GRAPHICS_OUTPUT_BLT_PIXEL) {.Red = color.red, .Green = color.green, .Blue = color.blue};
+    uefi_call_wrapper(gop->Blt, 10, gop, &pixelColor, EfiBltVideoFill, 0 ,0, leftX, upperY, width, height, 0);
+}
+
+uint16_t read_key_blocking_impl() {
+    EFI_INPUT_KEY Key;
+    while (uefi_call_wrapper(ST->ConIn->ReadKeyStroke, 2, ST->ConIn, &Key) == EFI_NOT_READY);
+    return Key.UnicodeChar;
+}
 
 EFI_GRAPHICS_OUTPUT_PROTOCOL *init_gop(struct graphics_context *context)
 {
     EFI_GUID gopGuid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
-    EFI_GRAPHICS_OUTPUT_PROTOCOL *gop;
 
     EFI_STATUS status = uefi_call_wrapper(BS->LocateProtocol, 3, &gopGuid, NULL, (void**)&gop);
     if(EFI_ERROR(status))
         Print(L"Unable to locate GOP");
-    else
-        Print(L"Found GOP2");
     
     EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *info;
     UINTN SizeOfInfo, numModes, nativeMode;
@@ -27,7 +37,6 @@ EFI_GRAPHICS_OUTPUT_PROTOCOL *init_gop(struct graphics_context *context)
     if(EFI_ERROR(status)) {
         PrintLn(L"Unable to get native mode");
     } else {
-        PrintLn("got native mode");
         nativeMode = gop->Mode->Mode;
         numModes = gop->Mode->MaxMode;
     }
@@ -37,17 +46,11 @@ EFI_GRAPHICS_OUTPUT_PROTOCOL *init_gop(struct graphics_context *context)
         if (i != nativeMode) {
             continue;
         }
-        PrintLn(L"mode %03d width %d height %d format %x%s",
-        i,
-        info->HorizontalResolution,
-        info->VerticalResolution,
-        info->PixelFormat,
-        i == nativeMode ? L"(current)" : L""
-        );
         context->height = info->VerticalResolution;
         context->width = info->HorizontalResolution;
     }
-    return gop;    
+    context->draw_block = drawBlock;
+    return gop;
 }
 
 EFI_STATUS debug_preamble(EFI_HANDLE ImageHandle) {
@@ -62,8 +65,7 @@ EFI_STATUS debug_preamble(EFI_HANDLE ImageHandle) {
         PrintLn("HandleProtocol failed: 0x%lx\n", status);
         return status;
     }
-
-    // Print the actual base address of the loaded image
+    // Print the actual base address of the loaded image 
     PrintLn("Image loaded at: 0x%lx\n", (uint64_t)loaded_image->ImageBase);
 
     // Write image base and marker for GDB
@@ -71,16 +73,13 @@ EFI_STATUS debug_preamble(EFI_HANDLE ImageHandle) {
     volatile uint64_t *image_base_ptr = (uint64_t *)0x10008;
     *image_base_ptr = (uint64_t)loaded_image->ImageBase;  // Store ImageBase
     *marker_ptr = 0xDEADBEEF;   // Set marker
-
-    PrintLn("Wrote deadbeef");
-
     return EFI_SUCCESS;
 }
 
 EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
     debug_preamble(ImageHandle);
-    EFI_STATUS Status;
+    EFI_STATUS Status = EFI_SUCCESS;
 
     /* Store the system table for future use in other functions */
     ST = SystemTable;
@@ -88,15 +87,8 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     Print(L"Hello World\r\n");
 
     struct graphics_context context;
-    EFI_GRAPHICS_OUTPUT_PROTOCOL *gop = init_gop(&context);
-
-
-    start_game(context, gop);
-
-    /* Now wait until a key becomes available.  This is a simple
-       polling implementation.  You could try and use the WaitForKey
-       event instead if you like */
-
+    init_gop(&context);
+    start_game(context, &read_key_blocking_impl);
 
     return Status;
 }
